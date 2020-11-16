@@ -90,6 +90,7 @@ public class SessionTokenIdentifier extends
       final String origin) {
     super(kind, uri, owner, renewer, origin, encryptionSecrets);
     this.marshalledCredentials = marshalledCredentials;
+    this.setMaxDate(this.marshalledCredentials.getExpiration());
   }
 
   /**

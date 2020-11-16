@@ -19,6 +19,7 @@
 package org.apache.hadoop.fs.s3a.auth.delegation;
 
 import java.net.URI;
+import java.util.Random;
 
 import org.junit.BeforeClass;
 import org.junit.Test;
@@ -38,6 +39,7 @@ import static org.apache.hadoop.fs.s3a.auth.delegation.DelegationConstants.SESSI
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
 
 /**
  * Unit tests related to S3A DT support.
@@ -56,6 +58,34 @@ public class TestS3ADelegationTokenSupport {
     AbstractS3ATokenIdentifier identifier
         = new SessionTokenIdentifier();
     assertEquals(SESSION_TOKEN_KIND, identifier.getKind());
+  }
+
+  @Test
+  public void testSessionTokenIssueDateAndMaxDate() throws Throwable {
+    AbstractS3ATokenIdentifier identifier
+        = new SessionTokenIdentifier();
+    assertEquals(SESSION_TOKEN_KIND, identifier.getKind());
+    assertTrue("issue date is not set", identifier.getIssueDate() > 0L);
+    // there's no information on the max date, hence the default
+    assertEquals("max date", 0L, identifier.getMaxDate());
+
+    Text alice = new Text("alice");
+    Text renewer = new Text("yarn");
+    long expireTs = new Random().nextInt(Integer.MAX_VALUE);
+    MarshalledCredentials cred = new MarshalledCredentials("a", "b", "");
+    cred.setExpiration(expireTs);
+    AbstractS3ATokenIdentifier identifier2
+        = new SessionTokenIdentifier(SESSION_TOKEN_KIND,
+        alice,
+        renewer,
+        new URI("s3a://landsat-pds/"),
+        cred,
+        new EncryptionSecrets(S3AEncryptionMethods.SSE_S3, ""),
+        "origin");
+
+    assertTrue("issue date is not set", identifier2.getIssueDate() > 0L);
+    assertEquals("expiry time is not same as the credential's one", expireTs, identifier2.getExpiryTime());
+    assertEquals("max date is not same as expiry time", identifier2.getMaxDate(), identifier2.getExpiryTime());
   }
 
   @Test
@@ -90,6 +120,8 @@ public class TestS3ADelegationTokenSupport {
         UserGroupInformation.AuthenticationMethod.TOKEN,
         decodedUser.getAuthenticationMethod());
     assertEquals("origin", decoded.getOrigin());
+    assertEquals("issue date", identifier.getIssueDate(), decoded.getIssueDate());
+    assertEquals("max date", identifier.getMaxDate(), decoded.getMaxDate());
   }
 
   @Test
